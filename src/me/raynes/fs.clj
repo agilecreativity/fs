@@ -5,7 +5,7 @@
             [clojure.java.io :as io]
             [clojure.string :as string]
             [clojure.java.shell :as sh])
-  (:import [java.io File FilenameFilter]))
+  (:import [java.io File #_FilenameFilter]))
 
 ;; Once you've started a JVM, that JVM's working directory is set in stone
 ;; and cannot be changed. This library will provide a way to simulate a
@@ -370,36 +370,37 @@
          re ""
          curly-depth 0]
     (let [[c j] stream]
-        (cond
-         (nil? c) (re-pattern
-                    ; We add ^ and $ since we check only for file names
-                    (str "^" (if (= \. (first s)) "" "(?=[^\\.])") re "$"))
-         (= c \\) (recur (nnext stream) (str re c c) curly-depth)
-         (= c \/) (recur (next stream) (str re (if (= \. j) c "/(?=[^\\.])"))
-                         curly-depth)
-         (= c \*) (recur (next stream) (str re "[^/]*") curly-depth)
-         (= c \?) (recur (next stream) (str re "[^/]") curly-depth)
-         (= c \{) (recur (next stream) (str re \() (inc curly-depth))
-         (= c \}) (recur (next stream) (str re \)) (dec curly-depth))
-         (and (= c \,) (< 0 curly-depth)) (recur (next stream) (str re \|)
+      (cond
+        (nil? c) (re-pattern
+                                        ; We add ^ and $ since we check only for file names
+                  (str "^" (if (= \. (first s)) "" "(?=[^\\.])") re "$"))
+        (= c \\) (recur (nnext stream) (str re c c) curly-depth)
+        (= c \/) (recur (next stream) (str re (if (= \. j) c "/(?=[^\\.])"))
+                        curly-depth)
+        (= c \*) (recur (next stream) (str re "[^/]*") curly-depth)
+        (= c \?) (recur (next stream) (str re "[^/]") curly-depth)
+        (= c \{) (recur (next stream) (str re \() (inc curly-depth))
+        (= c \}) (recur (next stream) (str re \)) (dec curly-depth))
+        (and (= c \,) (< 0 curly-depth)) (recur (next stream) (str re \|)
+                                                curly-depth)
+        (#{\. \( \) \| \+ \^ \$ \@ \%} c) (recur (next stream) (str re \\ c)
                                                  curly-depth)
-         (#{\. \( \) \| \+ \^ \$ \@ \%} c) (recur (next stream) (str re \\ c)
-                                                  curly-depth)
-         :else (recur (next stream) (str re c) curly-depth)))))
+        :else (recur (next stream) (str re c) curly-depth)))))
 
+#_
 (defn glob
   "Returns files matching glob pattern."
   ([pattern]
-     (let [parts (split pattern)
-           root (apply file (if (= (count parts) 1) ["."] (butlast parts)))]
-       (glob root (last parts))))
+   (let [parts (split pattern)
+         root (apply file (if (= (count parts) 1) ["."] (butlast parts)))]
+     (glob root (last parts))))
   ([^File root pattern]
-     (let [regex (glob->regex pattern)]
-       (seq (.listFiles
-             root
-             (reify FilenameFilter
-               (accept [_ _ filename]
-                 (boolean (re-find regex filename)))))))))
+   (let [regex (glob->regex pattern)]
+     (seq (.listFiles
+           root
+           (reify FilenameFilter
+             (accept [_ _ filename]
+               (boolean (re-find regex filename)))))))))
 
 (defn- iterzip
   "Iterate over a zip, returns a sequence of the nodes with a nil suffix"
